@@ -56,8 +56,8 @@ PIXI.BorderFilter = function() {
 				'if(newPosition.x * newPosition.x + newPosition.y * newPosition.y > 2.*2. || float(i) > threshold){',
 					'counter = i;',
 					'r = colors[i]/16777215.;',
-					'g = colors[(i+1)%255]/16777215.;',
-					'b = colors[(i+2)%255]/16777215.;',
+					'g = colors[int(mod(float(i+1),255.))]/16777215.;',
+					'b = colors[int(mod(float(i+2),255.))]/16777215.;',
 					'break;',
 				'}',
 				'float xTemp = newPosition.x * newPosition.x - newPosition.y * newPosition.y + scaledPosition.x;',
@@ -93,7 +93,7 @@ $(document).ready(function(){
 	requestAnimFrame(animate);
 	function animate() {
 		//animate by zooming in towards mouse cursor
-		zoomSpeed = document.getElementById('zoomSpeed').value;
+		zoomSpeed = document.getElementById('zoomSpeed').value/10000;
 		console.log(zoomSpeed);
 
 		var mousePositionX = stage.getMousePosition().x/_width;
