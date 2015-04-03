@@ -5,11 +5,13 @@
 		<link href="style.css"  type="text/css"  rel="stylesheet" />
 	</head>
 	<body>
-		Zoom speed<input type="range" id="zoomSpeed" value="10" min="1" max="500">
-		<input type="range" id="animation speed" value="25000" min="1" max="50000">
-
+		<div id="control">
+			<a href="#" class="playpause arrow-right" id="playtoggle"></a>
+			<input type="range" id="animationPosition" value="500" min="0" max="1000">
+		</div>
 		<script src="bower_components/jquery/dist/jquery.js"></script>
 		<script src="bower_components/pixi/bin/pixi.js"></script>
+		<script src="js/jquery.mousewheel.min.js"></script>
 		<script src="js/main.js"></script>
 	</body>
 </html>

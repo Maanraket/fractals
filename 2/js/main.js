@@ -2,7 +2,9 @@
 var _width = 1900,
 	_height = 900,
 	stepRes = 1000,
-	threshold = 255;
+	threshold = 128,
+	mousePositionX,
+	mousePositionY;
 
 var zoomSpeed = 0.0005;
 
@@ -16,7 +18,7 @@ console.log(0xFFFFFF);
 
 //Custom pixi filter in order to compute the fractal on the gpu
 
-PIXI.BorderFilter = function() {
+PIXI.FractalFilter = function() {
     PIXI.AbstractFilter.call(this);
 
     this.passes = [ this ];
@@ -47,7 +49,7 @@ PIXI.BorderFilter = function() {
 	    'void main(void) {',
 			'vec2 ss = vec2(gl_FragCoord.x / resolution.x, gl_FragCoord.y/resolution.y);',
 			'vec2 scaledPosition = vec2((gl_FragCoord.x / resolution.x) * (maxSet.x - minSet.x) + minSet.x, (gl_FragCoord.y / resolution.y) * (maxSet.y - minSet.y) + minSet.y);',
-			'vec2 newPosition = vec2(0.5+sin(animator/stepRes*3.14*2.),0.5+sin((stepRes-animator)/stepRes*3.14*2.));',
+			'vec2 newPosition = vec2(0.5+sin(.1+animator/stepRes*3.14*2.),0.5+sin(.1+(stepRes-animator)/stepRes*3.14*2.));',
 			'int counter = 0;',
 			'float r = 0.;',
 			'float g = 0.;',
@@ -70,43 +72,95 @@ PIXI.BorderFilter = function() {
 	];
 };
 
-PIXI.BorderFilter.prototype = Object.create( PIXI.AbstractFilter.prototype );
-PIXI.BorderFilter.prototype.constructor = PIXI.BorderFilter;
+PIXI.FractalFilter.prototype = Object.create( PIXI.AbstractFilter.prototype );
+PIXI.FractalFilter.prototype.constructor = PIXI.FractalFilter;
+
+
+var stage = new PIXI.Stage(0x000000);
+var renderer = PIXI.autoDetectRenderer(_width, _height);
+
+
+
+var fractal = new PIXI.Sprite;
+
+fractal.position.x = 0;
+fractal.position.y = 0;
+fractal.width = _width;
+fractal.height = _height;
+
+var FractalFilter = new PIXI.FractalFilter();
+fractal.filters = [FractalFilter];
+
+stage.addChild(fractal);
+
+
+var scrollZoom = 0;
+
+var animationPlay = true;
+var animationPosition = 0;
+var animationCounter = 0;
 
 $(document).ready(function(){
-	var stage = new PIXI.Stage(0x000000);
-	var renderer = PIXI.autoDetectRenderer(_width, _height);
 	document.body.appendChild(renderer.view);
-
-	var fractal = new PIXI.Sprite;
-
-	fractal.position.x = 0;
-	fractal.position.y = 0;
-	fractal.width = _width;
-	fractal.height = _height;
-
-	var borderFilter = new PIXI.BorderFilter();
-	fractal.filters = [borderFilter];
-
-	stage.addChild(fractal);
 
 	requestAnimFrame(animate);
 	function animate() {
 		//animate by zooming in towards mouse cursor
-		zoomSpeed = document.getElementById('zoomSpeed').value/10000;
-		console.log(zoomSpeed);
 
-		var mousePositionX = stage.getMousePosition().x/_width;
-		var mousePositionY = stage.getMousePosition().y/_width;
-
-		borderFilter.uniforms.minSet.value.x += zoomSpeed * (1-mousePositionX);
-		borderFilter.uniforms.minSet.value.y += zoomSpeed * (1-mousePositionY);
-		borderFilter.uniforms.maxSet.value.x += zoomSpeed * (mousePositionX);
-		borderFilter.uniforms.maxSet.value.y += zoomSpeed * (mousePositionY);
+		if(stage.getMousePosition().x > 0){ 
+			mousePositionX = stage.getMousePosition().x/_width;
+			mousePositionY = stage.getMousePosition().y/_height;
+		}
+		var xLength = FractalFilter.uniforms.maxSet.value.x - FractalFilter.uniforms.minSet.value.x;
+		var yLength = FractalFilter.uniforms.maxSet.value.y - FractalFilter.uniforms.minSet.value.y;
+		var setRatio = (xLength)/(yLength);
+		if(stage.getMousePosition().x ){
+			FractalFilter.uniforms.minSet.value.x += xLength * scrollZoom * (mousePositionX);
+			FractalFilter.uniforms.minSet.value.y += yLength * scrollZoom * (1-mousePositionY);
+			FractalFilter.uniforms.maxSet.value.x -= xLength * scrollZoom * (1-mousePositionX);
+			FractalFilter.uniforms.maxSet.value.y -= yLength * scrollZoom * (mousePositionY);
+		}
 
 		//animate with starting positions of x and y
-		borderFilter.uniforms.animator.value = (borderFilter.uniforms.animator.value + 1) % stepRes;
+		if(!animationPlay){
+			animationPosition = $('#animationPosition').val();
+		} else {
+			animationPosition = Math.sin(animationCounter*2*Math.PI)*1000;
+			animationCounter += 0.0001;
+			$('#animationPosition').val(animationPosition);
+		}
+		FractalFilter.uniforms.animator.value = animationPosition;
 		requestAnimFrame(animate);
 		renderer.render(stage);
+		scrollZoom = scrollZoom * .8;
 	}
+
+	$('#playtoggle').click(function(e){
+		e.preventDefault();
+		animationPlay = !animationPlay;
+		if(animationPlay){
+			animationCounter = Math.asin(animationPosition/1000)/2/Math.PI;
+		}
+		$(this).toggleClass('arrow-right').toggleClass('bars');
+	});
+
+});
+
+function resizeHandler(e){
+	_width = $(document).width();
+	_height = $(document).height();
+	FractalFilter.uniforms.resolution.value.x = _width;
+	FractalFilter.uniforms.resolution.value.y = _height;
+	fractal.width = _width;
+	fractal.height = _height;
+	renderer.resize(_width,_height);
+}
+
+
+$(window).on('resize', resizeHandler);
+
+resizeHandler();
+
+$(document).mousewheel(function(e){
+	scrollZoom += e.deltaY * e.deltaFactor/10000;
 });
