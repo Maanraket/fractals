@@ -2,7 +2,7 @@
 var _width = 1900,
 	_height = 900,
 	stepRes = 1000,
-	threshold = 128,
+	threshold = 64,
 	mousePositionX,
 	mousePositionY;
 
@@ -100,19 +100,40 @@ var animationPlay = true;
 var animationPosition = 0;
 var animationCounter = 0;
 
+var oldMousePosition, newMousePosition;
+var stageDragging = false;
+
 $(document).ready(function(){
 	document.body.appendChild(renderer.view);
 
 	requestAnimFrame(animate);
 	function animate() {
+		newMousePosition = stage.getMousePosition().clone();
+		//do things with mouse position
+
+		var xLength = FractalFilter.uniforms.maxSet.value.x - FractalFilter.uniforms.minSet.value.x;
+		var yLength = FractalFilter.uniforms.maxSet.value.y - FractalFilter.uniforms.minSet.value.y;
+
+		if(stageDragging){
+			console.log( stage.getMousePosition());
+			xMovement = (newMousePosition.x - oldMousePosition.x)/_width;
+			yMovement = (newMousePosition.y - oldMousePosition.y)/_height;
+
+			console.log(newMousePosition.x - oldMousePosition.x);
+
+			FractalFilter.uniforms.minSet.value.x -= xLength * xMovement ;
+			FractalFilter.uniforms.minSet.value.y += yLength * yMovement ;
+			FractalFilter.uniforms.maxSet.value.x -= xLength * xMovement ;
+			FractalFilter.uniforms.maxSet.value.y += yLength * yMovement ;
+		}
+
+
 		//animate by zooming in towards mouse cursor
 
 		if(stage.getMousePosition().x > 0){ 
 			mousePositionX = stage.getMousePosition().x/_width;
 			mousePositionY = stage.getMousePosition().y/_height;
 		}
-		var xLength = FractalFilter.uniforms.maxSet.value.x - FractalFilter.uniforms.minSet.value.x;
-		var yLength = FractalFilter.uniforms.maxSet.value.y - FractalFilter.uniforms.minSet.value.y;
 		var setRatio = (xLength)/(yLength);
 		if(stage.getMousePosition().x ){
 			FractalFilter.uniforms.minSet.value.x += xLength * scrollZoom * (mousePositionX);
@@ -133,8 +154,23 @@ $(document).ready(function(){
 		requestAnimFrame(animate);
 		renderer.render(stage);
 		scrollZoom = scrollZoom * .8;
+		oldMousePosition = newMousePosition;
 	}
+	//Panning
+	stage.mousedown = function(){
+		stageDragging = true;
+	};
 
+	function stopDrag(){
+		stageDragging = false;
+	}
+	stage.mouseup = function stopDrag(){
+		stageDragging = false;
+	}
+	stage.mouseout = function stopDrag(){
+		stageDragging = false;
+	}
+	//Play/pause button
 	$('#playtoggle').click(function(e){
 		e.preventDefault();
 		animationPlay = !animationPlay;
@@ -143,6 +179,7 @@ $(document).ready(function(){
 		}
 		$(this).toggleClass('arrow-right').toggleClass('bars');
 	});
+
 
 });
 
